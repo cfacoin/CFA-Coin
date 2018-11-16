@@ -1,0 +1,118 @@
+# Copyright (c) 2009-2010 Satoshi Nakamoto
+# Distributed under the MIT/X11 software license, see the accompanying
+# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+USE_UPNP:=0
+
+INCLUDEPATHS= \
+ -I"C:\deps\boost_1_55_0" \
+ -I"C:\deps\db-5.3.28\build_windows" \
+ -I"C:\deps\openssl-1.0.1j\include"
+
+LIBPATHS= \
+ -L"C:\deps\boost_1_55_0\stage\lib" \
+ -L"C:\deps\db-5.3.28\build_windows" \
+ -L"C:\deps\openssl-1.0.1j"
+
+LIBS= \
+ -l boost_system-mgw48-mt-s-1_55 \
+ -l boost_filesystem-mgw48-mt-s-1_55 \
+ -l boost_program_options-mgw48-mt-s-1_55 \
+ -l boost_thread-mgw48-mt-s-1_55 \
+ -l boost_chrono-mgw48-mt-s-1_55 \
+ -l db_cxx \
+ -l ssl \
+ -l crypto
+
+DEFS=-DWIN32 -D_WINDOWS -DBOOST_THREAD_USE_LIB -DBOOST_SPIRIT_THREADSAFE
+DEBUGFLAGS=-g
+CFLAGS=-mthreads -O3 -msse2 -w -Wall -Wextra -Wno-ignored-qualifiers -Wformat -Wformat-security -Wno-unused-parameter $(DEBUGFLAGS) $(DEFS) $(INCLUDEPATHS)
+LDFLAGS=-Wl,--dynamicbase -Wl,--nxcompat
+
+TESTDEFS = -DTEST_DATA_DIR=$(abspath test/data)
+
+ifndef USE_UPNP
+	override USE_UPNP = -
+endif
+ifneq (${USE_UPNP}, -)
+ INCLUDEPATHS += -I"C:\deps\miniupnpc"
+ LIBPATHS += -L"C:\deps\miniupnpc"
+ LIBS += -l miniupnpc -l iphlpapi
+ DEFS += -DSTATICLIB -DUSE_UPNP=$(USE_UPNP)
+endif
+
+LIBS += -l kernel32 -l user32 -l gdi32 -l comdlg32 -l winspool -l winmm -l shell32 -l comctl32 -l ole32 -l oleaut32 -l uuid -l rpcrt4 -l advapi32 -l ws2_32 -l mswsock -l shlwapi
+
+# TODO: make the mingw builds smarter about dependencies, like the linux/osx builds are
+HEADERS = $(wildcard *.h)
+
+OBJS= \
+    obj/addrman.o \
+    obj/alert.o \
+    obj/bloom.o \
+    obj/chainparams.o \
+    obj/checkpoints.o \
+    obj/core.o \
+    obj/crypter.o \
+    obj/db.o \
+    obj/eckey.o \
+    obj/hash.o \
+    obj/init.o \
+    obj/irc.o \
+    obj/kernel.o \
+    obj/key.o \
+    obj/keystore.o \
+    obj/main.o \
+    obj/miner.o \
+    obj/net.o    \
+    obj/netbase.o \
+    obj/pbkdf2.o \
+    obj/protocol.o \
+    obj/ringsig.o \
+    obj/rpcclient.o \
+    obj/rpcprotocol.o \
+    obj/rpcserver.o \
+    obj/script.o \
+    obj/scrypt.o \
+    obj/smessage.o \
+    obj/state.o \
+    obj/stealth.o \
+    obj/sync.o \
+    obj/txdb-leveldb.o \
+    obj/txmempool.o \
+    obj/util.o \
+    obj/version.o \
+    obj/wallet.o \
+    obj/walletdb.o 
+
+all: cfacoind.exe
+
+LIBS += $(CURDIR)/leveldb/libleveldb.a $(CURDIR)/leveldb/libmemenv.a
+DEFS += $(addprefix -I,$(CURDIR)/leveldb/include)
+DEFS += $(addprefix -I,$(CURDIR)/leveldb/helpers)
+OBJS += obj/txdb-leveldb.o
+leveldb/libleveldb.a:
+#	cd leveldb; make libleveldb.a; cd ..
+obj/txdb-leveldb.o: leveldb/libleveldb.a
+
+obj/%.o: %.h $(HEADERS)
+	g++ -c $(CFLAGS) -o $@ $<
+
+obj/zerocoin/%.o: zerocoin/%.h
+	g++ -c $(CFLAGS) -o $@ $<
+
+obj/scrypt-x86.o: scrypt-x86.S
+	$(CXX) -c $(xCXXFLAGS) -MMD -o $@ $<
+
+obj/scrypt-x86_64.o: scrypt-x86_64.S
+	$(CXX) -c $(xCXXFLAGS) -MMD -o $@ $<
+
+cfacoind.exe: $(OBJS:obj/%=obj/%)
+	g++ $(CFLAGS) $(LDFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
+
+clean:
+	-del /Q cfacoind
+	-del /Q obj\*
+	-del /Q obj\zerocoin\*
+
+FORCE:

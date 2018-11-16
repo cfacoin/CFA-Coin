@@ -1,0 +1,9 @@
+Compiling / integration for CFACoin in to your Platform
+
+See doc/readme-qt.rst for instructions on building CFACoin QT,
+the intended-for-end-users, nice-graphical-interface, reference
+implementation of CFACoin.
+
+See doc/build-*.txt for instructions on building cfacoind,
+the intended-for-services, no-graphical-interface, reference
+implementation of CFACoin.
